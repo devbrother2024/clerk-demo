@@ -44,15 +44,33 @@ export default function RootLayout({
 프로젝트 루트에 `middleware.ts` 파일을 생성하여 보호된 라우트를 설정합니다:
 
 ```typescript
-import { authMiddleware } from '@clerk/nextjs'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-export default authMiddleware({
-    // 공개 라우트 설정
-    publicRoutes: ['/', '/api/public']
+// 공개 접근이 가능한 경로 정의
+const isPublicRoute = createRouteMatcher([
+    '/', // 메인 페이지
+    '/sign-in(.*)', // 로그인 페이지
+    '/sign-up(.*)', // 회원가입 페이지
+    '/api/webhook(.*)', // Webhook 엔드포인트
+    '/_next(.*)', // Next.js 내부 라우트
+    '/favicon.ico',
+    '/logo.webp'
+])
+
+export default clerkMiddleware(async (auth, request) => {
+    // 공개 경로가 아닌 경우 인증 필요
+    if (!isPublicRoute(request)) {
+        await auth.protect()
+    }
 })
 
 export const config = {
-    matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)']
+    matcher: [
+        // Skip Next.js internals and all static files
+        '/((?!.*\\..*|_next).*)',
+        '/',
+        '/(api|trpc)(.*)'
+    ]
 }
 ```
 
